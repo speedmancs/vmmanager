@@ -15,6 +15,9 @@ type VM struct {
 var nextId = 0
 var vms []VM
 
+func Count() int {
+	return len(vms)
+}
 func GetVMs() ([]VM, error) {
 	return vms, nil
 }
@@ -29,6 +32,10 @@ func GetVM(id int) (*VM, error) {
 	return nil, fmt.Errorf("Failed to Get VM with id %d", id)
 }
 
+func Clear() {
+	vms = nil
+	nextId = 0
+}
 func RegisterVM(r io.Reader) (*VM, error) {
 	var newVM VM
 	err := json.NewDecoder(r).Decode(&newVM)
