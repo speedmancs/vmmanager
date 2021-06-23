@@ -1,8 +1,6 @@
 package main
 
-import (
-	"github.com/speedmancs/vmmanager/app"
-)
+import "github.com/speedmancs/vmmanager/app"
 
 func main() {
 	app := app.App{}
