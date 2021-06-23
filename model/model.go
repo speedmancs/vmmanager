@@ -13,7 +13,7 @@ type VM struct {
 }
 
 var nextId = 0
-var vms []VM
+var vms = []VM{}
 
 func Count() int {
 	return len(vms)
@@ -33,7 +33,7 @@ func GetVM(id int) (*VM, error) {
 }
 
 func Clear() {
-	vms = nil
+	vms = []VM{}
 	nextId = 0
 }
 func RegisterVM(r io.Reader) (*VM, error) {
