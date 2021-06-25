@@ -18,6 +18,7 @@ func RequestIDMiddleware(h http.Handler) http.Handler {
 		r = r.WithContext(ctx)
 
 		log.Printf("Generated id %s for incomming request %s", id.String(), r.URL)
+		w.Header().Set(ContextKeyRequestID, id.String())
 		h.ServeHTTP(w, r)
 	})
 }

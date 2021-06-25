@@ -73,6 +73,15 @@ func (app *App) updateVM(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (app *App) login(w http.ResponseWriter, r *http.Request) {
+	token, err := middleware.Login(r.Body)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err.Error())
+	} else {
+		respondWithInfo(w, http.StatusOK, fmt.Sprintf("login succeeded with token %s", token))
+	}
+}
+
 func (app *App) registerVM(w http.ResponseWriter, r *http.Request) {
 	vm, err := model.RegisterVM(r.Body)
 	if err != nil {
@@ -106,6 +115,7 @@ func (app *App) Initialize() {
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.getVM).Methods("GET")
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.updateVM).Methods("PUT")
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.deleteVM).Methods("DELETE")
+	app.Router.HandleFunc("/login", app.login).Methods("POST")
 
 	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
