@@ -22,14 +22,15 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 
 func LoggingMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqID := GetRequestID(r)
 		startTime := time.Now()
 		lrw := newLoggingResponseWriter(w)
 		h.ServeHTTP(lrw, r)
 		statusCode := lrw.statusCode
 		endTime := time.Now()
 		elapsed := endTime.Sub(startTime)
-		log.Printf("request started at %s\n", startTime)
-		log.Printf("request url:%s method:%s\n", r.URL, r.Method)
-		log.Printf("request duration: %s, with status code: %d\n", elapsed, statusCode)
+		log.Printf("request %s started at %s\n", reqID, startTime)
+		log.Printf("request %s url:%s method:%s\n", reqID, r.URL, r.Method)
+		log.Printf("request %s duration: %s, with status code: %d\n", reqID, elapsed, statusCode)
 	})
 }

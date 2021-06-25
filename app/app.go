@@ -117,5 +117,7 @@ func (app *App) Initialize() {
 
 func (app *App) Run(port string) {
 	log.Println("Starting service...")
-	log.Fatal(http.ListenAndServe(port, middleware.LoggingMiddleware(app.Router)))
+	log.Fatal(http.ListenAndServe(port,
+		middleware.RequestIDMiddleware(
+			middleware.LoggingMiddleware(app.Router))))
 }
