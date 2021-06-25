@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/speedmancs/vmmanager/middleware"
 	"github.com/speedmancs/vmmanager/model"
 )
 
@@ -104,9 +106,16 @@ func (app *App) Initialize() {
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.getVM).Methods("GET")
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.updateVM).Methods("PUT")
 	app.Router.HandleFunc("/vm/{id:[0-9]+}", app.deleteVM).Methods("DELETE")
+
+	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.SetOutput(file)
 }
 
 func (app *App) Run(port string) {
 	log.Println("Starting service...")
-	log.Fatal(http.ListenAndServe(port, app.Router))
+	log.Fatal(http.ListenAndServe(port, middleware.LoggingMiddleware(app.Router)))
 }
