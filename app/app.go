@@ -30,7 +30,7 @@ func (app *App) getVM(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Invalid ID %s", vars["id"]))
+		util.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Invalid ID %s", vars["id"]))
 		return
 	}
 
@@ -46,7 +46,7 @@ func (app *App) updateVM(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Invalid ID %s", vars["id"]))
+		util.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Invalid ID %s", vars["id"]))
 		return
 	}
 
@@ -83,7 +83,7 @@ func (app *App) deleteVM(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		util.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Invalid ID %s", vars["id"]))
+		util.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Invalid ID %s", vars["id"]))
 		return
 	}
 
