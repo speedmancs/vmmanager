@@ -63,7 +63,10 @@ func (app *App) login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.RespondWithError(w, http.StatusUnauthorized, err.Error())
 	} else {
-		util.RespondWithInfo(w, http.StatusOK, fmt.Sprintf("login succeeded with token %s", token))
+		tokenObj := middleware.Token{
+			Token: token,
+		}
+		util.RespondWithJSON(w, http.StatusOK, tokenObj)
 	}
 }
 
@@ -92,7 +95,7 @@ func (app *App) deleteVM(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *App) Initialize() {
+func (app *App) Initialize(logFile string) {
 	app.Router = mux.NewRouter()
 	app.Router.Use(middleware.RequestIDMiddleware, middleware.LoggingMiddleware)
 	app.Router.HandleFunc("/login", app.login).Methods("POST")
@@ -105,7 +108,7 @@ func (app *App) Initialize() {
 	subRouter.HandleFunc("/{id:[0-9]+}", app.updateVM).Methods("PUT")
 	subRouter.HandleFunc("/{id:[0-9]+}", app.deleteVM).Methods("DELETE")
 
-	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}

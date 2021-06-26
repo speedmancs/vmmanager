@@ -22,6 +22,10 @@ type User struct {
 	Password string `json:"password"`
 }
 
+type Token struct {
+	Token string `json:"token"`
+}
+
 //A sample use
 var user = User{
 	ID:       1,
@@ -65,7 +69,6 @@ func hashAndSalt(password string) string {
 
 func extractToken(r *http.Request) string {
 	bearToken := r.Header.Get("Authorization")
-	log.Println("bearToken:", bearToken)
 	strArr := strings.Split(bearToken, " ")
 	if len(strArr) == 2 {
 		return strArr[1]
@@ -89,7 +92,6 @@ func verifyToken(r *http.Request) (*jwt.Token, error) {
 
 func tokenValid(r *http.Request) error {
 	token, err := verifyToken(r)
-	log.Println("token:", token)
 	if err != nil {
 		return err
 	}
@@ -115,7 +117,6 @@ func Login(r io.Reader) (string, error) {
 
 func AuthMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("auth...")
 		err := tokenValid(r)
 		if err != nil {
 			util.RespondWithError(w, http.StatusUnauthorized, err.Error())

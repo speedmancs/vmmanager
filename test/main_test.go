@@ -1,79 +1,113 @@
 package test
 
 import (
-	"strings"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"regexp"
 	"testing"
 
+	"github.com/speedmancs/vmmanager/app"
+	"github.com/speedmancs/vmmanager/middleware"
 	"github.com/speedmancs/vmmanager/model"
+	"github.com/speedmancs/vmmanager/util"
 	"github.com/stretchr/testify/assert"
 )
 
-func setup() {
-	model.Clear()
-	jsons := []string{
-		`{ "name": "vm0", "status": "stopped" }`,
-		`{ "name": "vm1", "status": "running" }`,
-		`{ "name": "vm2", "status": "stopped" }`,
+var a app.App
+var logFile string
+
+func TestMain(m *testing.M) {
+	logFile = "main_test_logs.txt"
+	if _, err := os.Stat(logFile); err == nil {
+		os.Remove(logFile)
 	}
-
-	for _, json := range jsons {
-		r := strings.NewReader(json)
-		model.RegisterVM(r)
-	}
+	a.Initialize(logFile)
+	code := m.Run()
+	os.Exit(code)
 }
 
-func TestRegisterVM(t *testing.T) {
-	model.Clear()
-	const jsonStream = `
-	{ "name": "vm0", "status": "stopped" }
-	`
-	r := strings.NewReader(jsonStream)
-	vm, _ := model.RegisterVM(r)
-	assert.Equal(t, 0, vm.ID, "VM ID should be 0")
-	assert.Equal(t, "vm0", vm.Name, "VM Name should be vm0")
-	assert.Equal(t, "stopped", vm.Status, "VM Status should be stopped")
+func executeRequestWithToken(req *http.Request, token string) *httptest.ResponseRecorder {
+	var bearer = "Bearer " + token
+	req.Header.Add("Authorization", bearer)
+	return executeRequest(req)
 }
 
-func TestGetAllVMs(t *testing.T) {
-	setup()
-	vms, _ := model.GetVMs()
-	assert.Equal(t, 3, len(vms), "VMs count should be 3")
-	assert.Equal(t, 1, vms[1].ID, "ID of vms[1] should be 1")
-	assert.Equal(t, "vm1", vms[1].Name, "Name of VM should be vm1")
-	assert.Equal(t, "running", vms[1].Status, "Status of VM should be running")
+func executeRequest(req *http.Request) *httptest.ResponseRecorder {
+	rr := httptest.NewRecorder()
+	a.Router.ServeHTTP(rr, req)
+
+	return rr
 }
 
-func TestGetVM(t *testing.T) {
-	setup()
-	vm, _ := model.GetVM(2)
-	assert.Equal(t, 2, vm.ID, "ID of vms[1] should be 2")
-	assert.Equal(t, "vm2", vm.Name, "Name of VM should be vm2")
-	assert.Equal(t, "stopped", vm.Status, "Status of VM should be stopped")
-
-	_, err := model.GetVM(3)
-	assert.NotNil(t, err, "Should have error when getting vm with id 3")
+func TestLogin(t *testing.T) {
+	token := login(t)
+	assert.NotEmpty(t, token)
 }
 
-func TestDeleteVM(t *testing.T) {
-	setup()
-	model.DeleteVM(2)
-	assert.Equal(t, 2, model.Count(), "VMs count should be 2")
-	err := model.DeleteVM(2)
-	assert.NotNil(t, err, "Should have error when deleting vm with id 2")
+func TestAuthFailure(t *testing.T) {
+	req, _ := http.NewRequest("GET", "/vm/all", nil)
+	response := executeRequest(req)
+	assert.Equal(t, http.StatusUnauthorized, response.Code)
 }
 
-func TestUpdateVM(t *testing.T) {
-	setup()
-	const jsonStream = `
-	{ "name": "vm1_new", "status": "stopped" }
-	`
-	r := strings.NewReader(jsonStream)
-	vm, _ := model.UpdateVM(1, r)
-	assert.Equal(t, 1, vm.ID, "ID of vms[1] should be 1")
-	assert.Equal(t, "vm1_new", vm.Name, "Name of VM should be vm1_new")
-	assert.Equal(t, "stopped", vm.Status, "Status of VM should be stopped")
+func login(t *testing.T) string {
+	var jsonStr = []byte(`{"username":"harry", "password": "password"}`)
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
 
-	r = strings.NewReader(jsonStream)
-	_, err := model.UpdateVM(3, r)
-	assert.NotNil(t, err, "Should have error when updating vm with id 3")
+	response := executeRequest(req)
+	assert.Equal(t, http.StatusOK, response.Code)
+	var tokenObj middleware.Token
+	err := json.NewDecoder(response.Body).Decode(&tokenObj)
+	assert.Nil(t, err)
+	return tokenObj.Token
+}
+func TestAuthGetAllVM(t *testing.T) {
+	Setup()
+	token := login(t)
+	assert.NotEmpty(t, token)
+
+	req, _ := http.NewRequest("GET", "/vm/all", nil)
+	response := executeRequestWithToken(req, token)
+	assert.Equal(t, http.StatusOK, response.Code)
+	var vms []model.VM
+	err := json.NewDecoder(response.Body).Decode(&vms)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(vms))
+	assert.Equal(t, "vm1", vms[1].Name)
+	assert.Equal(t, "running", vms[1].Status)
+}
+
+func TestRequestID(t *testing.T) {
+	token := login(t)
+	assert.NotEmpty(t, token)
+	req, _ := http.NewRequest("GET", "/vm/all", nil)
+	response := executeRequestWithToken(req, token)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.NotEmpty(t, response.Header().Get(middleware.ContextKeyRequestID))
+}
+
+func TestLogging(t *testing.T) {
+	token := login(t)
+	assert.NotEmpty(t, token)
+	req, _ := http.NewRequest("GET", "/vm/all", nil)
+	response := executeRequestWithToken(req, token)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	reqID := response.Header().Get(middleware.ContextKeyRequestID)
+	assert.NotEmpty(t, reqID)
+
+	lines := util.ReadAllLines(logFile)
+	n := len(lines)
+	assert.Contains(t, lines[n-4], fmt.Sprintf("Generated id %s", reqID))
+	assert.Contains(t, lines[n-3], fmt.Sprintf("request %s started at", reqID))
+	assert.Contains(t, lines[n-2], fmt.Sprintf("request %s url:/vm/all method:GET", reqID))
+
+	r, _ := regexp.Compile(fmt.Sprintf("request %s duration: .+, with status code: 200", reqID))
+	assert.True(t, r.MatchString(lines[n-1]))
 }
