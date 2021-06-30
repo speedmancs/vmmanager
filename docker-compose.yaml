@@ -1,0 +1,8 @@
+version: '3'
+services:
+  vmmanager:
+    build: .
+    image: mcr.microsoft.com/azuredocs/vmmanager:v1
+    container_name: vmmanager
+    ports:
+        - "8010:8010"
