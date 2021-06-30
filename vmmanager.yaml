@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: vmmanager
-        image: testacr1984.azurecr.io/vmmanager:v1
+        image: mcr.microsoft.com/azuredocs/vmmanager:v1
         ports:
         - containerPort: 8010
 ---
